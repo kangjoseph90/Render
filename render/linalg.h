@@ -4,6 +4,8 @@
 #include <cmath>
 using namespace std;
 
+//R^3 º¤ÅÍ, R^(3x3) Çà·Ä ¸ðµâ
+
 const double PI = 3.141592653589793238462643;
 
 struct v3 {
@@ -70,7 +72,11 @@ double angle(v3 v1, v3 v2,v3 axis) { //signed angle (right hand)
 
 struct polygon {	
 	v3 p[3], dir;
-	double kappa; //
+	double kappa; //°î·ü
+
+	void set_dir(void) {
+		dir = cross(p[0] - p[1], p[2] - p[1]).unit(); //clockwise -> front
+	}
 };
 
 struct mat3 { //3x3 matrix

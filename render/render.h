@@ -41,6 +41,11 @@ struct renderstruct {
 		this->HEIGHT = HEIGHT;
 	}
 
+	void on_resize(int WIDTH, int HEIGHT) {
+		this->WIDTH = WIDTH;
+		this->HEIGHT = HEIGHT;
+	}
+
 	void assign_window(HWND hWnd) {
 		this->hWnd = hWnd;
 	}
@@ -55,13 +60,16 @@ struct renderstruct {
 		SelectObject(hdc, GetStockObject(BLACK_PEN));
 		SelectObject(hdc, GetStockObject(GRAY_BRUSH));
 
-		POINT points[3];
-		points[0] = cam.v3_to_PT(p[0].p[0] - cam.pos, WIDTH, HEIGHT);
-		points[1] = cam.v3_to_PT(p[0].p[1] - cam.pos, WIDTH, HEIGHT);
-		points[2] = cam.v3_to_PT(p[0].p[2] - cam.pos, WIDTH, HEIGHT);
+		for (auto poly : p) {
+			if (dot(poly.dir, poly.p[0] - cam.pos) > 0) continue; //back face culling
+			POINT points[3];
+			points[0] = cam.v3_to_PT(poly.p[0] - cam.pos, WIDTH, HEIGHT);
+			points[1] = cam.v3_to_PT(poly.p[1] - cam.pos, WIDTH, HEIGHT);
+			points[2] = cam.v3_to_PT(poly.p[2] - cam.pos, WIDTH, HEIGHT);
+			Polygon(hdc, points, 3);
+		}
 
 
-		Polygon(hdc, points, 3);
 
 		SelectObject(hdc, original);
 		EndPaint(hWnd, &ps);

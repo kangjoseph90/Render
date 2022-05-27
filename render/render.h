@@ -3,16 +3,20 @@
 #include "model.h"
 #include "resource.h"
 #include "linalg.h"
+#include "object.h"
 #include "framework.h"
 #include <vector>
+#include <set>
+#include <mutex>
+#include <thread>
 
 
 struct camera {
 
-	v3 pos = v3(0, 0, 0), aim = v3(1, 0, 0);
+	v3 pos = zero, aim = x_axis;
 	double x_fov = (double)48 * PI / 180, y_fov = (double)27 * PI / 180;
 	
-	double speed = 20, rotate_speed = 1;
+	double speed = 50, rotate_speed = 1;
 	
 	POINT v3_to_PT(v3 v,int WIDTH,int HEIGHT) { 
 		POINT ret;
@@ -29,9 +33,9 @@ struct renderstruct {
 
 	HWND hWnd;
 	camera cam;
-	vector<polygon> p;
-	vector<v3> light;
+	physics* model;
 	
+	set<WPARAM> movement;
 	int WIDTH, HEIGHT;
 
 	BOOL available = true;
@@ -50,56 +54,77 @@ struct renderstruct {
 		this->hWnd = hWnd;
 	}
 
+	void assign_model(physics* model) {
+		this->model = model;
+	}
+
 	void render(void) {
+
 		PAINTSTRUCT ps;
 		HDC hdc = BeginPaint(hWnd, &ps);
-
+		
 		HGDIOBJ original = NULL;
 		original = SelectObject(hdc, GetStockObject(DC_PEN));
 
 		SelectObject(hdc, GetStockObject(BLACK_PEN));
 		SelectObject(hdc, GetStockObject(GRAY_BRUSH));
 
-		for (auto poly : p) {
-			if (dot(poly.dir, poly.p[0] - cam.pos) > 0) continue; //back face culling
+		for (auto polygon: model->polygons) {
+
+			//culling
+			if (dot(polygon.dir, polygon.p[0] - cam.pos) > 0) continue; //back face culling
+			
+			
 			POINT points[3];
-			points[0] = cam.v3_to_PT(poly.p[0] - cam.pos, WIDTH, HEIGHT);
-			points[1] = cam.v3_to_PT(poly.p[1] - cam.pos, WIDTH, HEIGHT);
-			points[2] = cam.v3_to_PT(poly.p[2] - cam.pos, WIDTH, HEIGHT);
+			for (int i = 0; i < 3; i++) {
+				points[i] = cam.v3_to_PT(polygon.p[i] - cam.pos, WIDTH, HEIGHT);
+			}
 			Polygon(hdc, points, 3);
 		}
-
-
 
 		SelectObject(hdc, original);
 		EndPaint(hWnd, &ps);
 	}
 
-	void move_camera(WPARAM wParam) {
+	void update_movement(WPARAM wParam,bool key_state) {
+
+#ifdef _DEBUG
 		printf_s("%c\n", wParam);
-		int c = 10;
-		switch (wParam)
-		{	
-			case VK_UP: cam.aim = rotate_xy(cam.aim, cam.rotate_speed / c);
-				break;
-			case VK_DOWN: cam.aim = rotate_xy(cam.aim, -cam.rotate_speed / c);
-				break;
-			case VK_LEFT: cam.aim = rotate_z(cam.aim, cam.rotate_speed / c);
-				break;
-			case VK_RIGHT: cam.aim = rotate_z(cam.aim, -cam.rotate_speed / c);
-				break;	
-			case VK_SPACE: cam.pos = cam.pos + v3(0, 0, 1) * cam.speed / c;
-				break;
-			case VK_SHIFT: cam.pos = cam.pos - v3(0, 0, 1) * cam.speed / c;
-				break;
-			case 'W': cam.pos = cam.pos + cam.aim.unit() * cam.speed/c;
-				break;
-			case 'A': cam.pos = cam.pos - cross(cam.aim, rotate_xy(cam.aim, PI / 2)).unit() * cam.speed/c;
-				break;
-			case 'S': cam.pos = cam.pos - cam.aim.unit() * cam.speed/c;
-				break;
-			case 'D': cam.pos = cam.pos + cross(cam.aim, rotate_xy(cam.aim, PI / 2)).unit() * cam.speed/c;
-				break;
+#endif
+
+		if (key_state) { //keydown
+			movement.insert(wParam);
+		}
+		else { //keyup
+			movement.erase(wParam);
+		}
+	}
+
+	void move_camera(double fps) {
+		for (auto wParam : movement) {
+			switch (wParam)
+			{
+				case VK_UP: cam.aim = rotate_xy(cam.aim, cam.rotate_speed / fps);
+					break;
+				case VK_DOWN: cam.aim = rotate_xy(cam.aim, -cam.rotate_speed / fps);
+					break;
+				case VK_LEFT: cam.aim = rotate_z(cam.aim, cam.rotate_speed / fps);
+					break;
+				case VK_RIGHT: cam.aim = rotate_z(cam.aim, -cam.rotate_speed / fps);
+					break;
+				case VK_SPACE: cam.pos = cam.pos + z_axis * cam.speed / fps;
+					break;
+				case VK_SHIFT: cam.pos = cam.pos - z_axis * cam.speed / fps;
+					break;
+				case 'W': cam.pos = cam.pos + cam.aim.unit() * cam.speed / fps;
+					break;
+				case 'A': cam.pos = cam.pos - cross(cam.aim, rotate_xy(cam.aim, PI / 2)).unit() * cam.speed / fps;
+					break;
+				case 'S': cam.pos = cam.pos - cam.aim.unit() * cam.speed / fps;
+					break;
+				case 'D': cam.pos = cam.pos + cross(cam.aim, rotate_xy(cam.aim, PI / 2)).unit() * cam.speed / fps;
+					break;
+			}
 		}
 	}
 
@@ -109,11 +134,23 @@ struct renderstruct {
 
 };
 
-void render_loop(renderstruct *rs, int fps) {
+void render_loop(renderstruct& rs, double fps,mutex& m) {
+
+	while (rs.available) {
+
+		InvalidateRect(rs.hWnd, NULL, TRUE);
+
+		rs.move_camera(fps);
+
+		m.lock();
+		rs.render();
+		m.unlock();
+
+		this_thread::sleep_for(chrono::milliseconds((long long)(1e3 / fps)));
 	
-	while (rs->available) {
-		InvalidateRect(rs->hWnd, NULL,TRUE);
-		this_thread::sleep_for(chrono::milliseconds((long long)1e3 / fps));
-		printf_s("aim : (%.2f, %.2f, %.2f)\n", rs->cam.aim.x, rs->cam.aim.y, rs->cam.aim.z);
+#ifdef _DEBUG
+		printf_s("aim  (%.1f, %.1f, %.1f)\n", rs.cam.aim.x, rs.cam.aim.y, rs.cam.aim.z);
+#endif
+	
 	}
 }

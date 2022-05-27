@@ -1,8 +1,10 @@
 #pragma once
 
 #include "linalg.h"
+#include "object.h"
 #include <thread>
-#include <Windows.h>
+#include <vector>
+#include <mutex>
 
 using std::thread;
 using namespace std;
@@ -11,21 +13,31 @@ using namespace std;
 
 struct physics {
 
+
+	vector<PY> polygons;
+
 	BOOL available = true;
 
+	void quit(void) {
+		available = false;
+	}
+
+	void run() {
+
+	}
 
 };
 
 
-int model_loop(physics model, int fps) {
-	while (TRUE) { //while(!quit message)
+void model_loop(physics& model, double fps,mutex& m) {
 
+	while (model.available) {
 
-
-		this_thread::sleep_for(chrono::milliseconds((long long)1e3 / fps));
-
+		m.lock();
 		//run dt
+		m.unlock();
 
+		this_thread::sleep_for(chrono::milliseconds((long long)(1e3 / fps)));
 	}
 }
 

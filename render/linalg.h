@@ -1,6 +1,5 @@
 #pragma once
 
-#include <vector>
 #include <cmath>
 using namespace std;
 
@@ -48,6 +47,11 @@ struct v3 {
 	}
 };
 
+v3 zero(0,0,0),
+		x_axis(1, 0, 0),
+		y_axis(0, 1, 0), 
+		z_axis(0, 0, 1);
+
 v3 operator*(double op, v3 v) {
 	return v * op;
 }
@@ -69,15 +73,6 @@ double angle(v3 v1, v3 v2,v3 axis) { //signed angle (right hand)
 	return atan2(dot(cross(v1, v2), axis), dot(v1, v2));
 }
 
-
-struct polygon {	
-	v3 p[3], dir;
-	double kappa; //곡률
-
-	void set_dir(void) {
-		dir = cross(p[0] - p[1], p[2] - p[1]).unit(); //clockwise -> front
-	}
-};
 
 struct mat3 { //3x3 matrix
 	double mat[3][3];
@@ -183,7 +178,6 @@ mat3 identity(void){
 	return mat3(arr);
 }
 
-
 v3 rotate_z(v3 v,double theta) {
 	double arr[3][3] = { {cos(theta),-sin(theta),0},{sin(theta),cos(theta),0},{0,0,1} };
 	v3 temp = mat3(arr) * v;
@@ -192,7 +186,6 @@ v3 rotate_z(v3 v,double theta) {
 
 v3 rotate_xy(v3 v, double theta) {
 	v3 p_xy = v3(v.x, v.y, 0); //xy 평면 projection
-	v3 x_axis = v3(1, 0, 0);
 	double phi = angle(x_axis,p_xy,v3(0,0,1)); //x축과 이루는 각 phi
 	v3 temp = rotate_z(v, -phi); //x축에 나란하도록 -phi만큼 z축 회전
 	double arr[3][3] = { {cos(theta),0,-sin(theta)},{0,1,0},{sin(theta),0,cos(theta)} }; 
@@ -200,3 +193,5 @@ v3 rotate_xy(v3 v, double theta) {
 	mat3 temp2 = mat3(arr);
 	return rotate_z(temp, phi); //phi만큼 z축 회전
 }
+
+

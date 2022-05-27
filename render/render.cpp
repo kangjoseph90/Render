@@ -5,6 +5,7 @@
 #include "linalg.h"
 #include "model.h"
 #include "render.h"
+#include <mutex>
 #include <thread>
 #include <stdio.h>
 using namespace std;
@@ -27,7 +28,7 @@ int WIDTH = 1280, HEIGHT = 720;
 
 renderstruct rs(WIDTH,HEIGHT);
 physics model;
-int fps=15;
+double fps=24;
 
 HINSTANCE hInst;                                // 현재 인스턴스입니다.
 WCHAR szTitle[MAX_LOADSTRING];                  // 제목 표시줄 텍스트입니다.
@@ -51,43 +52,68 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 #ifdef _DEBUG
     AllocConsole();
-#else
-    AttachConsole(ATTACH_PARENT_PROCESS);
-#endif
-
     FILE* pCout;
     freopen_s(&pCout, "conout$", "w", stdout); //returns 0
+    printf_s("DEBUG SESSION\n");
+#endif
 
-    printf_s("test\n");
     
 
-    polygon temp;
+    rs.assign_model(&model);
+
+    PY temp;
     temp.p[0] = { 100,-20,20 };
     temp.p[1] = { 100,0,-20 };
     temp.p[2] = { 100,20,20 };
     temp.set_dir();
-    rs.p.push_back(temp);
+    model.polygons.push_back(temp);
 
     temp.p[0] = { 100,20,20 };
     temp.p[1] = { 100,0,-20 };
     temp.p[2] = { 130,0,0 };
     temp.set_dir();
-    rs.p.push_back(temp);
+    model.polygons.push_back(temp);
 
     temp.p[0] = { 100,-20,20 };
     temp.p[1] = { 130,0,0 };
     temp.p[2] = { 100,0,-20 };
     temp.set_dir();
-    rs.p.push_back(temp);
+    model.polygons.push_back(temp);
 
     temp.p[0] = { 100,20,20 };
     temp.p[1] = { 130,0,0 };
     temp.p[2] = { 100,-20,20 };
     temp.set_dir();
-    rs.p.push_back(temp);
+    model.polygons.push_back(temp);
+    /// 
+    temp.p[0] = { 80,50,90 };
+    temp.p[1] = { 80,70,50 };
+    temp.p[2] = { 80,90,90 };
+    temp.set_dir();
+    model.polygons.push_back(temp);
 
-    //thread _t1(model_loop,model,60);
-    thread _t2(render_loop,&rs,15);
+    temp.p[0] = { 80,90,90 };
+    temp.p[1] = { 80,70,50 };
+    temp.p[2] = { 110,70,70 };
+    temp.set_dir();
+    model.polygons.push_back(temp);
+
+    temp.p[0] = { 80,50,90 };
+    temp.p[1] = { 110,70,70 };
+    temp.p[2] = { 80,70,50 };
+    temp.set_dir();
+    model.polygons.push_back(temp);
+
+    temp.p[0] = { 80,90,90 };
+    temp.p[1] = { 110,70,70 };
+    temp.p[2] = { 80,50,90 };
+    temp.set_dir();
+    model.polygons.push_back(temp);
+
+
+    mutex m;
+    thread _t1(model_loop,ref(model),60,ref(m));
+    thread _t2(render_loop,ref(rs),fps,ref(m));
 
     // 전역 문자열을 초기화합니다.
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -114,6 +140,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         }
     }
 
+#ifdef _DEBUG
+    FreeConsole();
+#endif
+
+    rs.quit();
+    model.quit();
+    _t1.join();
     _t2.join();
 
     return (int)msg.wParam;
@@ -121,11 +154,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 
 
-//
-//  함수: MyRegisterClass()
-//
-//  용도: 창 클래스를 등록합니다.
-//
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
     WNDCLASSEXW wcex;
@@ -190,13 +218,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
         case WM_PAINT:
-            rs.render();
+            ValidateRect(hWnd, NULL); 
         break;
         case WM_KEYDOWN:
-            rs.move_camera(wParam);  
+            rs.update_movement(wParam,true);  
         break;
-        case WM_CHAR:
-            rs.move_camera(wParam);
+        case WM_KEYUP:
+            rs.update_movement(wParam, false);
         break;
         case WM_MOUSEWHEEL:
  
@@ -216,8 +244,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
         case WM_DESTROY:
             PostQuitMessage(0);
-            FreeConsole();
-            rs.quit();
         break;
         default:
             return DefWindowProc(hWnd, message, wParam, lParam);

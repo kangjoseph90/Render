@@ -47,13 +47,16 @@ struct v3 {
 	}
 };
 
-v3 zero(0,0,0),
-		x_axis(1, 0, 0),
-		y_axis(0, 1, 0), 
-		z_axis(0, 0, 1);
+v3 zero = v3(0, 0, 0),
+x_axis = v3(1, 0, 0),
+y_axis = v3(0, 1, 0),
+z_axis = v3(0, 0, 1);
 
 v3 operator*(double op, v3 v) {
 	return v * op;
+}
+v3 operator-(v3 v) {
+	return -1 * v;
 }
 
 double norm(v3 v) {
@@ -71,6 +74,9 @@ v3 proj(v3 b, v3 a) {
 double angle(v3 v1, v3 v2,v3 axis) { //signed angle (right hand) 
 	axis = axis.unit();
 	return atan2(dot(cross(v1, v2), axis), dot(v1, v2));
+}
+double cos(v3 v1, v3 v2) {
+	return dot(v1, v2) / (norm(v1) * norm(v2));
 }
 
 

@@ -23,8 +23,7 @@ const COLORREF rgbGray = 0x00A0A0A0;
 
 // 전역 변수:
 
-
-int WIDTH = 1280, HEIGHT = 720;
+int WIDTH = 640, HEIGHT = 360;
 
 renderstruct rs(WIDTH,HEIGHT);
 physics model;
@@ -56,8 +55,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     freopen_s(&pCout, "conout$", "w", stdout); //returns 0
     printf_s("DEBUG SESSION\n");
 #endif
-
-    
 
     rs.assign_model(&model);
 

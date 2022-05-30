@@ -16,10 +16,10 @@ struct physics {
 
 	vector<PY> polygons;
 
-	BOOL available = true;
+	BOOL available = TRUE;
 
 	void quit(void) {
-		available = false;
+		available = FALSE;
 	}
 
 	void run() {
